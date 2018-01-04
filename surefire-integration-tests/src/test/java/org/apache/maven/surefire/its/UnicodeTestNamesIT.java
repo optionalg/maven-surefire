@@ -20,41 +20,54 @@ package org.apache.maven.surefire.its;
  */
 
 import java.io.File;
+
 import org.apache.maven.surefire.its.fixture.OutputValidator;
 import org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase;
 import org.apache.maven.surefire.its.fixture.SurefireLauncher;
 import org.apache.maven.surefire.its.fixture.TestFile;
 
-import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
+
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
 
 /**
  * Verifies unicode filenames pass through correctly.
- * <br>
- * If the underlying file system turns out not to support unicode, we just fail an assumption.s
  */
 public class UnicodeTestNamesIT
-    extends SurefireJUnit4IntegrationTestCase
+        extends SurefireJUnit4IntegrationTestCase
 {
     @Test
     public void checkFileNamesWithUnicode()
     {
         SurefireLauncher unpacked = unpack( "unicode-testnames" );
-        File xxyz = new File( unpacked.getUnpackedAt(), "src/test/java/junit/twoTestCases/XXYZTest.java" );
+        File basedir = unpacked.getUnpackedAt();
 
-        File dest = new File( unpacked.getUnpackedAt(),
-                              "src/test/java/junit/twoTestCases/\u800C\u7D22\u5176\u60C5Test.java" );
+        unpacked.execute( "clean" );
 
-        Assume.assumeTrue( xxyz.renameTo( dest ) );
-        Assume.assumeTrue( dest.exists() );
-        Assume.assumeTrue(
-            !new File( unpacked.getUnpackedAt(), "src/test/java/junit/twoTestCases/????Test.java" ).exists() );
+        File xxyz = new File( basedir, "src/test/java/junit/twoTestCases/XXYZTest.java" );
+        File dest = new File( basedir, "src/test/java/junit/twoTestCases/\u800C\u7D22\u5176\u60C5Test.java" );
 
-        OutputValidator outputValidator = unpacked.executeTest().assertTestSuiteResults( 2, 0, 0, 0 );
-        TestFile surefireReportsFile = outputValidator.getSurefireReportsFile( "junit.twoTestCases.而索其情Test.txt" );
-        Assert.assertTrue( surefireReportsFile.exists() );
-        //surefireReportsFile .assertContainsText( "junit.twoTestCases.\u800C\u7D22\u5176\u60C5Test.txt" );
+        //noinspection ResultOfMethodCallIgnored
+        dest.delete();
+        assertTrue( xxyz.renameTo( dest ) );
+
+        assertTrue( dest.exists() );
+        assumeFalse( new File( basedir, "src/test/java/junit/twoTestCases/????Test.java" ).exists() );
+
+        OutputValidator outputValidator =
+                unpacked.executeTest()
+                        .assertTestSuiteResults( 2, 0, 0, 0 );
+
+        TestFile surefireReportFile =
+                outputValidator.getSurefireReportsFile( "junit.twoTestCases.而索其情Test.txt" );
+        assertTrue( surefireReportFile.exists() );
+        surefireReportFile.assertContainsText( "junit.twoTestCases.????Test" );
+
+        TestFile surefireXmlReportFile =
+                outputValidator.getSurefireReportsFile( "TEST-junit.twoTestCases.而索其情Test.xml" );
+        assertTrue( surefireXmlReportFile.exists() );
+        surefireXmlReportFile.assertContainsText( "junit.twoTestCases.而索其情Test" );
     }
 
 }
